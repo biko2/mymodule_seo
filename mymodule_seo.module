@@ -1,0 +1,86 @@
+<?php
+
+/**
+ * Implements hook_views_post_execute().
+ *
+ * If there is a pager display output rel links
+ *
+ * @see https://support.google.com/webmasters/answer/1663744?hl=en
+ */
+function mymodule_seo_views_post_execute(&$view) {
+  // @todo - this solution only works if we can expect one pager per page.
+  if ($view->display[$view->current_display]->handler->use_pager()) {
+    $current_page = $view->query->pager->current_page;
+    $items_per_page = $view->query->pager->options['items_per_page'];
+    $last_item_viewed = ($current_page * $items_per_page) + $items_per_page;
+    // Prepare link rel=prev if current page > 0.
+    if ($current_page > 0) {
+      if ($current_page > 1) {
+        $parameters = [
+          'page' => $current_page - 1,
+        ];
+      }
+      else {
+        $parameters = [];
+      }
+      $query = drupal_get_query_parameters($parameters, []);
+      if ($query_pager = pager_get_query_parameters()) {
+        $query = array_merge($query, $query_pager);
+      }
+      $head_link = [
+        'rel' => 'prev',
+        'href' => url(
+          $_GET['q'],
+          [
+            'query' => $query,
+          ]
+        ),
+      ];
+      drupal_add_html_head_link($head_link);
+    }
+    // Prepare link rel=next if more pages available.
+    if ($view->query->pager->total_items > $last_item_viewed) {
+      $parameters = [
+        'page' => $current_page + 1,
+      ];
+      $query = drupal_get_query_parameters($parameters, []);
+      if ($query_pager = pager_get_query_parameters()) {
+        $query = array_merge($query, $query_pager);
+      }
+      $head_link = [
+        'rel' => 'next',
+        'href' => url(
+          $_GET['q'],
+          [
+            'query' => $query,
+          ]
+        ),
+      ];
+      drupal_add_html_head_link($head_link);
+    }
+  }
+}
+
+/**
+ * Implements hook_html_head_alter().
+ *
+ * Remove the 'canonical' meta tag if url query string has 'page'
+ * on the current page. This is based upon recommendations from Google to avoid
+ * confusion between the different meta tags.
+ */
+function mymodule_seo_html_head_alter(&$head_elements) {
+  if ($query = drupal_get_query_parameters()) {
+    if (isset($query['page']) && !empty($query['page'])) {
+
+      // Loop over the head tags and remove the canonical tag.
+      foreach ($head_elements as $key => $element) {
+        if ((isset($element['#attributes']['rel']) && $element['#attributes']['rel'] == 'canonical')
+          || (isset($element['#name']) && $element['#name'] == 'canonical')) {
+          // Remove the canonical element. There should only be one, but just in
+          // case it'll keep looking through the list.
+          unset($head_elements[$key]);
+        }
+      }
+    }
+  }
+}

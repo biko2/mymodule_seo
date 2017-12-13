@@ -1,0 +1,5 @@
+name = My Module SEO
+description = SEO Utils for Biko
+core = 7.x
+package = Biko
+version = 7.x-1.0
